@@ -58,16 +58,31 @@ pipeline {
                             sh 'terraform apply -input=false tfplan'
                         } catch (err) {
                             echo 'Terraform apply failed. Attempting cleanup with destroy...'
-                            sh '''
-                            terraform destroy -auto-approve \
-                                -var aws_region=${AWS_DEFAULT_REGION} \
-                                -var key_name=${TF_VAR_key_name} \
+                            sh """
+                            terraform destroy -auto-approve \\
+                                -var aws_region=${AWS_DEFAULT_REGION} \\
+                                -var key_name=${TF_VAR_key_name} \\
                                 -var tag_owner=${TF_VAR_tag_owner}
-                            '''
+                            """
                             error("Terraform apply failed. Resources have been destroyed.")
                         }
                     }
                 }
+            }
+        }
+
+        stage('Extract Private Key') {
+            when {
+                expression { return params.AUTO_APPROVE == true }
+            }
+            steps {
+                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-eks-creds']]) {
+                    sh '''
+                    terraform output -raw private_key_pem > ec2_key.pem
+                    chmod 400 ec2_key.pem
+                    '''
+                }
+                archiveArtifacts artifacts: 'ec2_key.pem', fingerprint: true
             }
         }
 
