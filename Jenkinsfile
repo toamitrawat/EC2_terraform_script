@@ -2,7 +2,6 @@ pipeline {
     agent any
 
     environment {
-        AWS_CREDENTIALS    = credentials('aws-eks-creds') // Jenkins credentials ID
         AWS_DEFAULT_REGION = 'ap-south-1'
         TF_VAR_key_name    = 'dev-ec2-keypair'
         TF_VAR_tag_owner   = 'dev-team@example.com'
@@ -27,24 +26,24 @@ pipeline {
 
         stage('Terraform Init') {
             steps {
-                sh '''
-                export AWS_ACCESS_KEY_ID=${AWS_CREDENTIALS_USR}
-                export AWS_SECRET_ACCESS_KEY=${AWS_CREDENTIALS_PSW}
-                terraform init -input=false
-                '''
+                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-eks-creds']]) {
+                    sh '''
+                    terraform init -input=false
+                    '''
+                }
             }
         }
 
         stage('Terraform Plan') {
             steps {
-                sh """
-                export AWS_ACCESS_KEY_ID=${AWS_CREDENTIALS_USR}
-                export AWS_SECRET_ACCESS_KEY=${AWS_CREDENTIALS_PSW}
-                terraform plan -out=tfplan \\
-                    -var aws_region=${AWS_DEFAULT_REGION} \\
-                    -var key_name=${TF_VAR_key_name} \\
-                    -var tag_owner=${TF_VAR_tag_owner}
-                """
+                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-eks-creds']]) {
+                    sh """
+                    terraform plan -out=tfplan \\
+                        -var aws_region=${AWS_DEFAULT_REGION} \\
+                        -var key_name=${TF_VAR_key_name} \\
+                        -var tag_owner=${TF_VAR_tag_owner}
+                    """
+                }
                 archiveArtifacts artifacts: 'tfplan', fingerprint: true
             }
         }
@@ -55,21 +54,17 @@ pipeline {
             }
             steps {
                 input message: 'Approve Terraform Apply?', ok: 'Apply'
-                sh '''
-                export AWS_ACCESS_KEY_ID=${AWS_CREDENTIALS_USR}
-                export AWS_SECRET_ACCESS_KEY=${AWS_CREDENTIALS_PSW}
-                terraform apply -input=false tfplan
-                '''
+                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-eks-creds']]) {
+                    sh 'terraform apply -input=false tfplan'
+                }
             }
         }
 
-        stage('Outputs') {
+        stage('Terraform Output') {
             steps {
-                sh '''
-                export AWS_ACCESS_KEY_ID=${AWS_CREDENTIALS_USR}
-                export AWS_SECRET_ACCESS_KEY=${AWS_CREDENTIALS_PSW}
-                terraform output
-                '''
+                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-eks-creds']]) {
+                    sh 'terraform output'
+                }
             }
         }
     }
