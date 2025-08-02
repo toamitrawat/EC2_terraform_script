@@ -11,14 +11,14 @@ args  '--entrypoint=/bin/sh'
 }
 environment {
 // Jenkins-managed credentials (AWS_ACCESS_KEY_ID + AWS_SECRET_ACCESS_KEY)
-AWS_CREDENTIALS = credentials('aws-terraform-creds')
+AWS_CREDENTIALS = credentials('aws-eks-creds')
 AWS_DEFAULT_REGION = 'ap-south-1'
 TF_VAR_key_name     = 'dev-ec2-keypair'
 TF_VAR_tag_owner    = 'dev-team@example.com'
 }
 parameters {
 // Git repository and branch parameters
-string(name: 'GIT_REPO_URL', defaultValue: 'https://github.com/your-org/terraform-repo.git', description: 'Git repository URL containing Terraform code')
+string(name: 'GIT_REPO_URL', defaultValue: 'https://github.com/toamitrawat/EC2_terraform_script.git', description: 'Git repository URL containing Terraform code')
 string(name: 'GIT_BRANCH', defaultValue: 'main', description: 'Branch to checkout')
 booleanParam(name: 'AUTO_APPROVE', defaultValue: false, description: 'Automatically apply changes?')
 }
@@ -29,7 +29,7 @@ steps {
 git(
 url: params.GIT_REPO_URL,
 branch: params.GIT_BRANCH,
-credentialsId: 'git-credentials'
+credentialsId: 'github-pat'
 )
 }
 }
