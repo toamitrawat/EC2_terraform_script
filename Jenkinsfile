@@ -27,9 +27,7 @@ pipeline {
         stage('Terraform Init') {
             steps {
                 withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-eks-creds']]) {
-                    sh '''
-                    terraform init -input=false
-                    '''
+                    sh 'terraform init -input=false'
                 }
             }
         }
@@ -53,9 +51,22 @@ pipeline {
                 expression { return params.AUTO_APPROVE == true }
             }
             steps {
-                input message: 'Approve Terraform Apply?', ok: 'Apply'
-                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-eks-creds']]) {
-                    sh 'terraform apply -input=false tfplan'
+                script {
+                    input message: 'Approve Terraform Apply?', ok: 'Apply'
+                    withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-eks-creds']]) {
+                        try {
+                            sh 'terraform apply -input=false tfplan'
+                        } catch (err) {
+                            echo 'Terraform apply failed. Attempting cleanup with destroy...'
+                            sh '''
+                            terraform destroy -auto-approve \
+                                -var aws_region=${AWS_DEFAULT_REGION} \
+                                -var key_name=${TF_VAR_key_name} \
+                                -var tag_owner=${TF_VAR_tag_owner}
+                            '''
+                            error("Terraform apply failed. Resources have been destroyed.")
+                        }
+                    }
                 }
             }
         }
