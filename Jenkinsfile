@@ -1,10 +1,5 @@
 pipeline {
-    agent {
-        docker {
-            image 'hashicorp/terraform:1.5.0'
-            args '--entrypoint=/bin/sh'
-        }
-    }
+    agent any
 
     environment {
         AWS_CREDENTIALS    = credentials('aws-eks-creds') // Jenkins credentials ID
